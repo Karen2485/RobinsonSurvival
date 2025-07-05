@@ -27,3 +27,34 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+# Compiled class files
+*.class
+
+# Log files
+*.log
+
+# IntelliJ IDEA project files
+/.idea/
+/*.iml
+
+# Build output directories
+/out/
+/target/
+
+# Mac OS system files
+.DS_Store
+
+# Windows thumbnail cache files
+Thumbs.db
+
+# Maven folders
+/.mvn/
+/target/
+
+# Gradle folders
+/.gradle/
+/build/
+
+# JavaFX runtime cache (если есть)
+*.cache

@@ -1,5 +1,6 @@
 package game.utils;
 
+import game.logic.ItemRegistry;
 import game.model.Inventory;
 import game.model.Item;
 import game.model.Player;
@@ -57,6 +58,7 @@ public class GameSaveManager {
 
                 if (!inInventory) {
                     String[] parts = line.split("=");
+                    if (parts.length < 2) continue;  // Безопасность при ошибках формата
                     switch (parts[0]) {
                         case "health" -> player.setHealth(Integer.parseInt(parts[1]));
                         case "hunger" -> player.setHunger(Integer.parseInt(parts[1]));
@@ -65,8 +67,13 @@ public class GameSaveManager {
                     }
                 } else {
                     String[] parts = line.split("=");
-                    Item loadedItem = new Item(parts[0], ""); // Описание пока пустое
-                    inventory.addItem(loadedItem, Integer.parseInt(parts[1]));
+                    if (parts.length < 2) continue;
+                    Item loadedItem = ItemRegistry.getItemByName(parts[0]);
+                    if (loadedItem != null) {
+                        inventory.addItem(loadedItem, Integer.parseInt(parts[1]));
+                    } else {
+                        System.out.println("Unknown item found in save: " + parts[0]);
+                    }
                 }
             }
 

@@ -17,8 +17,10 @@ public class Inventory {
 
     /**
      * Добавляет предмет в инвентарь.
+     * Игнорирует вызовы с количеством <= 0.
      */
     public void addItem(Item item, int quantity) {
+        if (quantity <= 0) return;
         items.put(item, items.getOrDefault(item, 0) + quantity);
     }
 
@@ -54,7 +56,7 @@ public class Inventory {
             System.out.println("Inventory is empty.");
         } else {
             for (Map.Entry<Item, Integer> entry : items.entrySet()) {
-                System.out.println(entry.getKey().getName() + " (" + entry.getKey().getDescription() + "): " + entry.getValue());
+                System.out.println(entry.getKey() + ": " + entry.getValue());
             }
         }
     }
@@ -68,8 +70,9 @@ public class Inventory {
 
     /**
      * Полностью заменяет содержимое инвентаря (используется при загрузке).
+     * Создает копию карты для безопасности.
      */
     public void setItems(Map<Item, Integer> newItems) {
-        this.items = newItems;
+        this.items = new HashMap<>(newItems);
     }
 }
