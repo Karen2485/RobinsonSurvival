@@ -1,0 +1,12 @@
+health=100
+hunger=100
+alive=true
+daysSurvived=0
+inventory:
+Medkit=1
+Axe=1
+Knife=1
+Empty Bag=2
+Rope=2
+Bread=3
+Water=3
