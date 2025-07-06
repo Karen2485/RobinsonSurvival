@@ -75,4 +75,21 @@ public class Inventory {
     public void setItems(Map<Item, Integer> newItems) {
         this.items = new HashMap<>(newItems);
     }
+
+    /**
+     * Преобразует инвентарь в строку с описанием всех предметов.
+     */
+    @Override
+    public String toString() {
+        if (items.isEmpty()) {
+            return "Inventory is empty.";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<Item, Integer> entry : items.entrySet()) {
+            sb.append(entry.getKey().getName())
+                    .append(" (").append(entry.getKey().getDescription()).append("): ")
+                    .append(entry.getValue()).append("\n");
+        }
+        return sb.toString();
+    }
 }
