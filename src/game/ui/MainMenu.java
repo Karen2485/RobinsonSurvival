@@ -4,6 +4,7 @@ import game.utils.GameSaveManager;
 import game.logic.IslandEventManager;
 import game.logic.StartingItems;
 import game.logic.ItemRegistry;
+import game.logic.SurvivalStatus;
 import game.model.Inventory;
 import game.model.Player;
 
@@ -15,12 +16,14 @@ public class MainMenu {
     private Inventory inventory;
     private int daysSurvived;
     private Scanner scanner;
+    private SurvivalStatus survivalStatus;
 
     public MainMenu() {
         this.player = new Player();
         this.inventory = new Inventory();
         this.daysSurvived = 0;
         this.scanner = new Scanner(System.in);
+        this.survivalStatus = new SurvivalStatus();
 
         showStartMenu();
     }
@@ -39,8 +42,10 @@ public class MainMenu {
                 StartingItems.addInitialItems(inventory);
                 break;
             } else if ("2".equals(input)) {
-                boolean loaded = GameSaveManager.loadGame(player, inventory, new int[]{0});
+                int[] daysHolder = {0};
+                boolean loaded = GameSaveManager.loadGame(player, inventory, daysHolder);
                 if (loaded) {
+                    this.daysSurvived = daysHolder[0];
                     System.out.println("Loaded saved game. Welcome back!");
                     break;
                 } else {
@@ -66,7 +71,8 @@ public class MainMenu {
             System.out.println("3. Check Player Status");
             System.out.println("4. End Day (Advance Time)");
             System.out.println("5. Explore the island");
-            System.out.println("6. Exit Game");
+            System.out.println("6. Use Medkit");
+            System.out.println("7. Save & Exit Game");
             System.out.print("Enter your choice: ");
 
             String choice = scanner.nextLine().trim();
@@ -76,68 +82,121 @@ public class MainMenu {
                 case "2" -> eatFood();
                 case "3" -> playerStatus();
                 case "4" -> endDay();
-                case "5" -> eventManager.explore(player, inventory);
-                case "6" -> {
+                case "5" -> {
+                    eventManager.explore(player, inventory);
+                    checkPlayerDeath();
+                }
+                case "6" -> useMedkit();
+                case "7" -> {
                     GameSaveManager.saveGame(player, inventory, daysSurvived);
                     System.out.println("Game saved. Exiting game...");
                     return;
                 }
-                default -> System.out.println("Invalid choice. Please enter a number between 1 and 6.");
+                default -> System.out.println("Invalid choice. Please enter a number between 1 and 7.");
             }
 
-            if (!player.isAlive()) {
-                System.out.println("\nGame over. You survived " + daysSurvived + " days.");
-                break;
-            }
+            checkPlayerDeath();
         }
     }
 
     private void eatFood() {
-        // Расширяем логику еды — сначала хлеб, потом консервы, потом вода, потом ягоды
-        if (tryConsumeItem(ItemRegistry.BREAD, 20, "bread")) return;
-        if (tryConsumeItem(ItemRegistry.MEDKIT, 0, "medkit")) return; // аптечка лечит, но не естся
-        if (tryConsumeItem(ItemRegistry.WATER, 10, "water")) return;
-        if (tryConsumeItem(ItemRegistry.BERRIES, 15, "berries")) return;
+        boolean foodFound = false;
 
-        System.out.println("You have no food or water to consume.");
+        // Приоритет еды: хлеб -> ягоды -> вода (в крайнем случае)
+        if (tryConsumeFood(ItemRegistry.BREAD, 20, "bread")) {
+            foodFound = true;
+        } else if (tryConsumeFood(ItemRegistry.BERRIES, 15, "berries")) {
+            foodFound = true;
+        } else if (tryConsumeFood(ItemRegistry.WATER, 10, "water")) {
+            foodFound = true;
+            System.out.println("You're drinking water to survive, but you need solid food!");
+        } else {
+            System.out.println("You have no food or water to consume.");
+        }
+
+        // Уведомляем систему выживания о том, нашли ли мы еду
+        if (foodFound) {
+            System.out.println("You feel less hungry.");
+        }
     }
 
-    // Вспомогательный метод для поедания/использования предмета
-    private boolean tryConsumeItem(game.model.Item item, int hungerRestore, String displayName) {
+    private boolean tryConsumeFood(game.model.Item item, int hungerRestore, String displayName) {
         if (inventory.getItemCount(item) > 0) {
             inventory.removeItem(item, 1);
-            if (hungerRestore > 0) {
-                player.setHunger(Math.min(player.getHunger() + hungerRestore, 100));
-                System.out.println("You consumed some " + displayName + ". Hunger restored by " + hungerRestore + ".");
-            } else if (displayName.equals("medkit")) {
-                player.setHealth(Math.min(player.getHealth() + 30, 100));
-                System.out.println("You used a medkit. Health restored by 30.");
-            }
+            // Ограничиваем голод максимумом в 100
+            player.setHunger(Math.min(player.getHunger() + hungerRestore, 100));
+            System.out.println("You consumed " + displayName + ". Hunger restored by " + hungerRestore + ".");
             return true;
         }
         return false;
     }
 
+    private void useMedkit() {
+        if (inventory.getItemCount(ItemRegistry.MEDKIT) > 0) {
+            inventory.removeItem(ItemRegistry.MEDKIT, 1);
+            int healthBefore = player.getHealth();
+            // Ограничиваем здоровье максимумом в 100
+            player.setHealth(Math.min(player.getHealth() + 30, 100));
+            int healthRestored = player.getHealth() - healthBefore;
+            System.out.println("You used a medkit. Health restored by " + healthRestored + ".");
+        } else {
+            System.out.println("You don't have any medkits.");
+        }
+    }
+
     private void playerStatus() {
-        System.out.println("Health: " + player.getHealth());
-        System.out.println("Hunger: " + player.getHunger());
-        System.out.println("Alive: " + player.isAlive());
+        System.out.println("\n=== Player Status ===");
+        System.out.println("Health: " + player.getHealth() + "/100");
+        System.out.println("Hunger: " + player.getHunger() + "/100");
+        System.out.println("Alive: " + (player.isAlive() ? "Yes" : "No"));
+        System.out.println("Days survived: " + daysSurvived);
+
+        // Показываем предупреждения
+        if (player.getHealth() <= 20) {
+            System.out.println("⚠️ WARNING: Your health is critically low!");
+        }
+        if (player.getHunger() <= 20) {
+            System.out.println("⚠️ WARNING: You are very hungry!");
+        }
     }
 
     private void endDay() {
         daysSurvived++;
-        player.setHunger(player.getHunger() - 15);
 
+        // Уменьшаем голод каждый день
+        player.setHunger(Math.max(0, player.getHunger() - 15));
+
+        // Проверяем голод и влияние на здоровье
         if (player.getHunger() <= 0) {
-            player.setHealth(player.getHealth() - 10);
-            System.out.println("You are starving!");
+            player.setHealth(Math.max(0, player.getHealth() - 20));
+            System.out.println("💀 You are starving! You lose 20 health.");
+        } else if (player.getHunger() <= 20) {
+            player.setHealth(Math.max(0, player.getHealth() - 10));
+            System.out.println("😰 You are very hungry! You lose 10 health.");
         }
 
+        // Проверяем выживание
+        checkPlayerDeath();
+
+        if (player.isAlive()) {
+            System.out.println("🌅 Day " + daysSurvived + " completed.");
+            System.out.println("Current status - Health: " + player.getHealth() + ", Hunger: " + player.getHunger());
+        }
+    }
+
+    private void checkPlayerDeath() {
         if (player.getHealth() <= 0) {
             player.setAlive(false);
-            System.out.println("You have died of starvation.");
-        }
+            System.out.println("\n💀 GAME OVER 💀");
+            System.out.println("You have died after surviving " + daysSurvived + " days on the island.");
 
-        System.out.println("Day ended. Days survived: " + daysSurvived);
+            if (player.getHunger() <= 0) {
+                System.out.println("Cause of death: Starvation");
+            } else {
+                System.out.println("Cause of death: Injuries and exhaustion");
+            }
+
+            System.out.println("Thank you for playing Robinson Survival!");
+        }
     }
 }
