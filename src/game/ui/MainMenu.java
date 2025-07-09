@@ -1,6 +1,8 @@
 package game.ui;
 
+import javafx.animation.FadeTransition;
 import javafx.animation.ScaleTransition;
+import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.effect.DropShadow;
@@ -11,6 +13,7 @@ import javafx.scene.media.AudioClip;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -23,7 +26,6 @@ public class MainMenu {
     private static AudioClip buttonClickSound;
 
     public static void show(Stage stage) {
-        // ---------- НАСТРОЙКА КОНТЕЙНЕРОВ ----------
         HBox buttonContainer = new HBox(30);
         buttonContainer.setStyle("-fx-alignment: center;");
         buttonContainer.setMaxWidth(700);
@@ -32,7 +34,7 @@ public class MainMenu {
         root.setStyle("-fx-alignment: center;");
         root.setMaxWidth(800);
 
-        // ---------- ЗАГРУЗКА ИКОНКИ-КНОПОК ----------
+        // ИКОНКИ
         ImageView[] newIcon = new ImageView[1];
         Button[] newButton = new Button[1];
         ImageView[] loadIcon = new ImageView[1];
@@ -46,12 +48,12 @@ public class MainMenu {
                 createIconButton("ui/exit_game.png", exitIcon, exitButton)
         );
 
-        // ---------- ЛОГОТИП ----------
+        // ЛОГО
         ImageView logoView = loadLogo("ui/logo.png");
         StackPane logoContainer = new StackPane(logoView);
         logoContainer.setMaxWidth(buttonContainer.getMaxWidth());
 
-        // ---------- СЦЕНА И ФОН ----------
+        // ФОН
         BackgroundImage backgroundImage = loadBackgroundImage("ui/background.jpg");
         Background background = backgroundImage != null
                 ? new Background(backgroundImage)
@@ -60,22 +62,33 @@ public class MainMenu {
         root.setBackground(background);
         root.getChildren().addAll(logoContainer, buttonContainer);
 
-        Scene scene = new Scene(root, 800, 700);
+        // ПЕРЕХОДНЫЙ ЭФФЕКТ
+        Rectangle blackOverlay = new Rectangle(800, 700, Color.BLACK);
+        blackOverlay.setOpacity(1.0);
+
+        StackPane mainStack = new StackPane(root, blackOverlay);
+        Scene scene = new Scene(mainStack, 800, 700);
         stage.setScene(scene);
         stage.setTitle("Robinson Survival - Main Menu");
         stage.show();
 
-        // ---------- СВЯЗЬ ШИРИНЫ И ВЫСОТЫ ----------
+        // ПЛАВНЫЙ ПЕРЕХОД
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(200), blackOverlay);
+        fadeIn.setFromValue(1.0);
+        fadeIn.setToValue(0.0);
+        fadeIn.setOnFinished(e -> mainStack.getChildren().remove(blackOverlay));
+        fadeIn.play();
+
+        // ОБНОВЛЕНИЕ РАЗМЕРОВ
         Runnable updateSizes = () -> {
             double buttonsWidth = buttonContainer.getWidth();
             if (buttonsWidth == 0) buttonsWidth = buttonContainer.getMaxWidth();
 
-            double iconSize = Math.min((buttonsWidth - 60) / 3, 200);  // ограничиваем ширину иконки
+            double iconSize = Math.min((buttonsWidth - 60) / 3, 200);
             if (newIcon[0] != null) newIcon[0].setFitWidth(iconSize);
             if (loadIcon[0] != null) loadIcon[0].setFitWidth(iconSize);
             if (exitIcon[0] != null) exitIcon[0].setFitWidth(iconSize);
 
-            // фиксируем высоту логотипа равной высоте иконок
             logoView.setFitWidth(buttonsWidth);
             logoView.setFitHeight(iconSize + 100);
         };
@@ -85,11 +98,11 @@ public class MainMenu {
         root.layout();
         updateSizes.run();
 
-        // ---------- ЗВУК ----------
+        // ЗВУКИ
         loadButtonClickSound("audio/button_click.wav");
         playBackgroundMusic("audio/background_music.mp3");
 
-        // ---------- ОБРАБОТКА НАЖАТИЙ ----------
+        // ДЕЙСТВИЯ
         newButton[0].setOnAction(e -> {
             playButtonClickSound();
             System.out.println("New Game clicked");
@@ -109,8 +122,7 @@ public class MainMenu {
     private static ImageView loadLogo(String resourcePath) {
         InputStream is = MainMenu.class.getClassLoader().getResourceAsStream(resourcePath);
         if (is != null) {
-            Image logo = new Image(is);
-            return new ImageView(logo);
+            return new ImageView(new Image(is));
         } else {
             System.err.println("Logo not found: " + resourcePath);
             return new ImageView();
@@ -144,7 +156,7 @@ public class MainMenu {
         Image image = new Image(is);
         ImageView imageView = new ImageView(image);
         imageView.setPreserveRatio(true);
-        imageView.setFitWidth(120); // начальное значение
+        imageView.setFitWidth(120);
 
         Button button = new Button("", imageView);
         button.setStyle("-fx-background-color: transparent;");
@@ -179,35 +191,33 @@ public class MainMenu {
     private static void loadButtonClickSound(String resourcePath) {
         try {
             URL soundUrl = MainMenu.class.getClassLoader().getResource(resourcePath);
-            if (soundUrl == null) {
+            if (soundUrl != null) {
+                buttonClickSound = new AudioClip(soundUrl.toString());
+            } else {
                 System.err.println("Button click sound not found: " + resourcePath);
-                return;
             }
-            buttonClickSound = new AudioClip(soundUrl.toString());
         } catch (Exception e) {
             System.err.println("Failed to load button click sound: " + e.getMessage());
         }
     }
 
     private static void playButtonClickSound() {
-        if (buttonClickSound != null) {
-            buttonClickSound.play();
-        }
+        if (buttonClickSound != null) buttonClickSound.play();
     }
 
     private static void playBackgroundMusic(String resourcePath) {
         try {
             if (backgroundMusicPlayer != null) backgroundMusicPlayer.stop();
             URL musicUrl = MainMenu.class.getClassLoader().getResource(resourcePath);
-            if (musicUrl == null) {
+            if (musicUrl != null) {
+                Media media = new Media(musicUrl.toString());
+                backgroundMusicPlayer = new MediaPlayer(media);
+                backgroundMusicPlayer.setCycleCount(MediaPlayer.INDEFINITE);
+                backgroundMusicPlayer.setVolume(0.3);
+                backgroundMusicPlayer.play();
+            } else {
                 System.err.println("Background music not found: " + resourcePath);
-                return;
             }
-            Media media = new Media(musicUrl.toString());
-            backgroundMusicPlayer = new MediaPlayer(media);
-            backgroundMusicPlayer.setCycleCount(MediaPlayer.INDEFINITE);
-            backgroundMusicPlayer.setVolume(0.3);
-            backgroundMusicPlayer.play();
         } catch (Exception e) {
             System.err.println("Failed to play background music: " + e.getMessage());
         }
