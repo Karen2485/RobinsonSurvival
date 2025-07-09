@@ -1,6 +1,5 @@
 package game.ui;
 
-import javafx.animation.FadeTransition;
 import javafx.animation.ScaleTransition;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -8,20 +7,32 @@ import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.scene.media.AudioClip;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.io.InputStream;
+import java.net.URL;
 
 public class MainMenu {
 
-    public static void show(Stage stage) {
-        VBox buttonContainer = new VBox(30);
-        buttonContainer.setStyle("-fx-alignment: center;");
-        buttonContainer.setMaxWidth(300);
-        buttonContainer.setFillWidth(false);
+    private static MediaPlayer backgroundMusicPlayer;
+    private static AudioClip buttonClickSound;
 
+    public static void show(Stage stage) {
+        // ---------- НАСТРОЙКА КОНТЕЙНЕРОВ ----------
+        HBox buttonContainer = new HBox(30);
+        buttonContainer.setStyle("-fx-alignment: center;");
+        buttonContainer.setMaxWidth(700);
+
+        VBox root = new VBox(40);
+        root.setStyle("-fx-alignment: center;");
+        root.setMaxWidth(800);
+
+        // ---------- ЗАГРУЗКА ИКОНКИ-КНОПОК ----------
         ImageView[] newIcon = new ImageView[1];
         Button[] newButton = new Button[1];
         ImageView[] loadIcon = new ImageView[1];
@@ -35,45 +46,75 @@ public class MainMenu {
                 createIconButton("ui/exit_game.png", exitIcon, exitButton)
         );
 
-        newButton[0].setOnAction(e -> System.out.println("New Game clicked"));
-        loadButton[0].setOnAction(e -> System.out.println("Load Game clicked"));
-        exitButton[0].setOnAction(e -> stage.close());
+        // ---------- ЛОГОТИП ----------
+        ImageView logoView = loadLogo("ui/logo.png");
+        StackPane logoContainer = new StackPane(logoView);
+        logoContainer.setMaxWidth(buttonContainer.getMaxWidth());
 
+        // ---------- СЦЕНА И ФОН ----------
         BackgroundImage backgroundImage = loadBackgroundImage("ui/background.jpg");
         Background background = backgroundImage != null
                 ? new Background(backgroundImage)
                 : new Background(new BackgroundFill(Color.web("#1e1e1e"), null, null));
 
-        StackPane root = new StackPane();
-        root.setPrefSize(800, 600);
         root.setBackground(background);
-        root.getChildren().add(buttonContainer);
+        root.getChildren().addAll(logoContainer, buttonContainer);
 
-        Scene scene = new Scene(root, 900, 700);
+        Scene scene = new Scene(root, 800, 700);
         stage.setScene(scene);
         stage.setTitle("Robinson Survival - Main Menu");
         stage.show();
 
-        FadeTransition fadeIn = new FadeTransition(Duration.millis(800), buttonContainer);
-        fadeIn.setFromValue(0.0);
-        fadeIn.setToValue(1.0);
-        fadeIn.play();
+        // ---------- СВЯЗЬ ШИРИНЫ И ВЫСОТЫ ----------
+        Runnable updateSizes = () -> {
+            double buttonsWidth = buttonContainer.getWidth();
+            if (buttonsWidth == 0) buttonsWidth = buttonContainer.getMaxWidth();
 
-        Runnable updateIcons = () -> {
-            double width = scene.getWidth();
-            double height = scene.getHeight();
-            double baseSize = Math.min(width, height);
-            double iconSize = Math.min(baseSize / 3, 180);
-
+            double iconSize = Math.min((buttonsWidth - 60) / 3, 200);  // ограничиваем ширину иконки
             if (newIcon[0] != null) newIcon[0].setFitWidth(iconSize);
             if (loadIcon[0] != null) loadIcon[0].setFitWidth(iconSize);
             if (exitIcon[0] != null) exitIcon[0].setFitWidth(iconSize);
+
+            // фиксируем высоту логотипа равной высоте иконок
+            logoView.setFitWidth(buttonsWidth);
+            logoView.setFitHeight(iconSize + 100);
         };
 
-        scene.widthProperty().addListener((obs, oldVal, newVal) -> updateIcons.run());
-        scene.heightProperty().addListener((obs, oldVal, newVal) -> updateIcons.run());
+        scene.widthProperty().addListener((obs, oldV, newV) -> updateSizes.run());
+        scene.heightProperty().addListener((obs, oldV, newV) -> updateSizes.run());
+        root.layout();
+        updateSizes.run();
 
-        updateIcons.run();
+        // ---------- ЗВУК ----------
+        loadButtonClickSound("audio/button_click.wav");
+        playBackgroundMusic("audio/background_music.mp3");
+
+        // ---------- ОБРАБОТКА НАЖАТИЙ ----------
+        newButton[0].setOnAction(e -> {
+            playButtonClickSound();
+            System.out.println("New Game clicked");
+        });
+
+        loadButton[0].setOnAction(e -> {
+            playButtonClickSound();
+            System.out.println("Load Game clicked");
+        });
+
+        exitButton[0].setOnAction(e -> {
+            playButtonClickSound();
+            stage.close();
+        });
+    }
+
+    private static ImageView loadLogo(String resourcePath) {
+        InputStream is = MainMenu.class.getClassLoader().getResourceAsStream(resourcePath);
+        if (is != null) {
+            Image logo = new Image(is);
+            return new ImageView(logo);
+        } else {
+            System.err.println("Logo not found: " + resourcePath);
+            return new ImageView();
+        }
     }
 
     private static BackgroundImage loadBackgroundImage(String resourcePath) {
@@ -103,15 +144,13 @@ public class MainMenu {
         Image image = new Image(is);
         ImageView imageView = new ImageView(image);
         imageView.setPreserveRatio(true);
-        imageView.setFitWidth(120);
+        imageView.setFitWidth(120); // начальное значение
 
         Button button = new Button("", imageView);
         button.setStyle("-fx-background-color: transparent;");
 
-        DropShadow hoverShadow = new DropShadow();
-        hoverShadow.setRadius(15);
+        DropShadow hoverShadow = new DropShadow(15, Color.rgb(0, 0, 0, 0.6));
         hoverShadow.setOffsetY(5);
-        hoverShadow.setColor(Color.rgb(0, 0, 0, 0.6));
 
         ScaleTransition enlarge = new ScaleTransition(Duration.millis(200), button);
         enlarge.setToX(1.05);
@@ -135,5 +174,42 @@ public class MainMenu {
         if (outButton != null && outButton.length > 0) outButton[0] = button;
 
         return button;
+    }
+
+    private static void loadButtonClickSound(String resourcePath) {
+        try {
+            URL soundUrl = MainMenu.class.getClassLoader().getResource(resourcePath);
+            if (soundUrl == null) {
+                System.err.println("Button click sound not found: " + resourcePath);
+                return;
+            }
+            buttonClickSound = new AudioClip(soundUrl.toString());
+        } catch (Exception e) {
+            System.err.println("Failed to load button click sound: " + e.getMessage());
+        }
+    }
+
+    private static void playButtonClickSound() {
+        if (buttonClickSound != null) {
+            buttonClickSound.play();
+        }
+    }
+
+    private static void playBackgroundMusic(String resourcePath) {
+        try {
+            if (backgroundMusicPlayer != null) backgroundMusicPlayer.stop();
+            URL musicUrl = MainMenu.class.getClassLoader().getResource(resourcePath);
+            if (musicUrl == null) {
+                System.err.println("Background music not found: " + resourcePath);
+                return;
+            }
+            Media media = new Media(musicUrl.toString());
+            backgroundMusicPlayer = new MediaPlayer(media);
+            backgroundMusicPlayer.setCycleCount(MediaPlayer.INDEFINITE);
+            backgroundMusicPlayer.setVolume(0.3);
+            backgroundMusicPlayer.play();
+        } catch (Exception e) {
+            System.err.println("Failed to play background music: " + e.getMessage());
+        }
     }
 }
