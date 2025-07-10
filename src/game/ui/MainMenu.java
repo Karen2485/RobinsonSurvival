@@ -116,7 +116,7 @@ public class MainMenu {
             if (exitIcon[0] != null) exitIcon[0].setFitWidth(iconSize);
 
             // Лого шириной по ширине контейнера с иконками (минус отступ)
-            logoView.setFitWidth(buttonsWidth - 200);
+            logoView.setFitWidth(buttonsWidth - 500);
             // Высоту подбираем пропорционально иконкам, плюс отступ
             logoView.setFitHeight(iconSize + 200);
         };
