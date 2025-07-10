@@ -3,6 +3,7 @@ package game.intro;
 import game.ui.MainMenu;
 import javafx.animation.FadeTransition;
 import javafx.application.Platform;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.StackPane;
@@ -11,6 +12,7 @@ import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaView;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -38,30 +40,36 @@ public class IntroVideoPlayer {
         StackPane root = new StackPane(mediaView);
         root.setStyle("-fx-background-color: black;");
 
-        Scene scene = new Scene(root, 800, 700);
+        // Получаем размеры экрана
+        Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
 
-        // Привязка размеров видео к окну
+        // Создаём сцену на весь экран
+        Scene scene = new Scene(root, screenBounds.getWidth(), screenBounds.getHeight());
+
+        // Привязываем размеры видео к размерам сцены (экрана)
         mediaView.fitWidthProperty().bind(scene.widthProperty());
         mediaView.fitHeightProperty().bind(scene.heightProperty());
 
-        // Пропуск видео по клавишам
+        // Обработка пропуска видео по ESC или SPACE
         scene.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ESCAPE || event.getCode() == KeyCode.SPACE) {
                 skipAndFadeOut(primaryStage, root);
             }
         });
 
-        // Завершение видео — скрыть и затемнить
+        // После окончания видео — плавно затемнить и перейти в меню
         mediaPlayer.setOnEndOfMedia(() -> {
             if (mediaPlayer != null) mediaPlayer.stop();
             if (mediaView != null) mediaView.setVisible(false);
             fadeOutAndStartMenu(primaryStage, root, scene);
         });
 
-        primaryStage.setFullScreen(false);
+        // Устанавливаем сцену, настраиваем полноэкранный режим
         primaryStage.setScene(scene);
-        primaryStage.setTitle("Robinson Survival - Intro");
+        primaryStage.setFullScreen(true);
+        primaryStage.setFullScreenExitHint(""); // убрать подсказку выхода из fullscreen
         primaryStage.show();
+
         mediaPlayer.play();
     }
 
@@ -76,7 +84,6 @@ public class IntroVideoPlayer {
         overlay.setFill(Color.BLACK);
         overlay.setOpacity(0);
 
-        // Привязка к размеру окна
         overlay.widthProperty().bind(scene.widthProperty());
         overlay.heightProperty().bind(scene.heightProperty());
 
@@ -89,6 +96,7 @@ public class IntroVideoPlayer {
             root.getChildren().remove(overlay);
             Platform.runLater(() -> {
                 try {
+                    stage.setFullScreen(false); // выходим из fullscreen перед меню
                     MainMenu.show(stage);
                     System.out.println("🎮 Welcome to Robinson Survival - Main Menu! 🏝️");
                 } catch (Exception ex) {

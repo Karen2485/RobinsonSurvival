@@ -16,9 +16,10 @@ public class GameSaveManager {
     private static final String SAVE_FILE = "game_save.txt";
 
     /**
-     * Сохраняет текущий прогресс игрока и инвентарь
+     * Сохраняет текущий прогресс игрока и инвентарь.
+     * Возвращает true при успешном сохранении, иначе false.
      */
-    public static void saveGame(Player player, Inventory inventory, int daysSurvived) {
+    public static boolean saveGame(Player player, Inventory inventory, int daysSurvived) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(SAVE_FILE))) {
             writer.println("health=" + player.getHealth());
             writer.println("hunger=" + player.getHunger());
@@ -31,13 +32,15 @@ public class GameSaveManager {
             }
 
             System.out.println("Game saved successfully!");
+            return true;
         } catch (IOException e) {
             System.out.println("Error saving game: " + e.getMessage());
+            return false;
         }
     }
 
     /**
-     * Загружает прогресс игры с валидацией данных
+     * Загружает прогресс игры с валидацией данных.
      */
     public static boolean loadGame(Player player, Inventory inventory, int[] daysSurvivedHolder) {
         File file = new File(SAVE_FILE);
@@ -57,31 +60,27 @@ public class GameSaveManager {
                 }
 
                 if (!inInventory) {
-                    String[] parts = line.split("=", 2); // Ограничиваем разделение двумя частями
+                    String[] parts = line.split("=", 2);
                     if (parts.length < 2) continue;
 
                     try {
                         switch (parts[0]) {
                             case "health" -> {
                                 int health = Integer.parseInt(parts[1]);
-                                // Валидация значения здоровья
                                 player.setHealth(Math.max(0, Math.min(100, health)));
                             }
                             case "hunger" -> {
                                 int hunger = Integer.parseInt(parts[1]);
-                                // Валидация значения голода
                                 player.setHunger(Math.max(0, Math.min(100, hunger)));
                             }
                             case "alive" -> player.setAlive(Boolean.parseBoolean(parts[1]));
                             case "daysSurvived" -> {
                                 int days = Integer.parseInt(parts[1]);
-                                // Валидация количества дней
                                 daysSurvivedHolder[0] = Math.max(0, days);
                             }
                         }
                     } catch (NumberFormatException e) {
                         System.out.println("Invalid number format for: " + parts[0] + "=" + parts[1]);
-                        // Продолжаем загрузку даже при ошибке одного поля
                     }
                 } else {
                     String[] parts = line.split("=", 2);
@@ -91,7 +90,7 @@ public class GameSaveManager {
                         Item loadedItem = ItemRegistry.getItemByName(parts[0]);
                         if (loadedItem != null) {
                             int quantity = Integer.parseInt(parts[1]);
-                            if (quantity > 0) { // Добавляем только положительные количества
+                            if (quantity > 0) {
                                 inventory.addItem(loadedItem, quantity);
                             }
                         } else {

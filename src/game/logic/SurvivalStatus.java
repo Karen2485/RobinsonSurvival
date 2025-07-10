@@ -1,30 +1,49 @@
 package game.logic;
 
-// Этот класс отвечает за отслеживание голода персонажа и проверку на смерть от голода
 public class SurvivalStatus {
-    private int daysWithoutFood;  // Сколько дней игрок прожил без еды
+
+    private int daysSurvived;      // Сколько дней игрок уже выжил
+    private int daysWithoutFood;   // Сколько дней подряд без еды
 
     public SurvivalStatus() {
-        this.daysWithoutFood = 0;  // Изначально персонаж не голоден
+        this.daysSurvived = 0;
+        this.daysWithoutFood = 0;
+    }
+
+    public int getDaysSurvived() {
+        return daysSurvived;
+    }
+
+    public void setDaysSurvived(int days) {
+        this.daysSurvived = days;
+    }
+
+    public int getDaysWithoutFood() {
+        return daysWithoutFood;
+    }
+
+    public void setDaysWithoutFood(int daysWithoutFood) {
+        this.daysWithoutFood = daysWithoutFood;
     }
 
     /**
-     * Вызывается в конце каждого дня.
-     * @param foundFood - true, если игрок ел в этот день, false - если не ел
+     * Вызывается в конце каждого игрового дня.
+     * @param ateFood true, если игрок ел в этот день, иначе false.
      */
-    public void passDay(boolean foundFood) {
-        if (foundFood) {
-            daysWithoutFood = 0;  // Если еда найдена — сбрасываем счётчик
+    public void passDay(boolean ateFood) {
+        daysSurvived++;
+        if (ateFood) {
+            daysWithoutFood = 0;
         } else {
-            daysWithoutFood++;    // Если не было еды — увеличиваем счётчик голода
+            daysWithoutFood++;
         }
+    }
 
-        // Проверка: умер ли персонаж от голода
-        if (daysWithoutFood >= 3) {
-            System.out.println("Your character has died from starvation.");  // Сообщение о смерти
-            System.exit(0);  // Завершение программы
-        } else {
-            System.out.println("Day passed. Days without food: " + daysWithoutFood);
-        }
+    /**
+     * Проверка, умер ли персонаж от голода.
+     * @return true, если дней без еды >= 3
+     */
+    public boolean isDeadFromStarvation() {
+        return daysWithoutFood >= 3;
     }
 }
